@@ -2,8 +2,8 @@
 
 const SHEET_NAME = "Data";
 const ID_COLUMN = 1; // Column A
-const NAME_COLUMN = 2; // Column B
-const DESCRIPTION_COLUMN = 3; // Column C
+const TITLE_COLUMN = 2; // Column B
+const AUTHOR_COLUMN = 3; // Column C
 
 /**
  * Returns the active sheet.
@@ -23,15 +23,15 @@ function generateId() {
 
 /**
  * CREATE: Adds a new item to the sheet.
- * @param {Object} itemData - An object containing name and description.
+ * @param {Object} itemData - An object containing title and author.
  * @return {Object} The created item with its ID.
  */
 function createItem(itemData) {
   const sheet = getSheet();
   const newId = generateId();
-  const row = [newId, itemData.name, itemData.description];
+  const row = [newId, itemData.title, itemData.author]; // Changed to title, author
   sheet.appendRow(row);
-  return { id: newId, name: itemData.name, description: itemData.description };
+  return { id: newId, title: itemData.title, author: itemData.author }; // Changed to title, author
 }
 
 /**
@@ -49,8 +49,8 @@ function readItems(itemId) {
 
   const items = dataRows.map(row => ({
     id: row[ID_COLUMN - 1],
-    name: row[NAME_COLUMN - 1],
-    description: row[DESCRIPTION_COLUMN - 1]
+    title: row[TITLE_COLUMN - 1], // Changed to TITLE_COLUMN
+    author: row[AUTHOR_COLUMN - 1] // Changed to AUTHOR_COLUMN
   }));
 
   if (itemId) {
@@ -61,7 +61,7 @@ function readItems(itemId) {
 
 /**
  * UPDATE: Updates an existing item by ID.
- * @param {Object} itemData - An object containing id, name, and description.
+ * @param {Object} itemData - An object containing id, title, and author.
  * @return {Object|null} The updated item object, or null if not found.
  */
 function updateItem(itemData) {
@@ -79,8 +79,8 @@ function updateItem(itemData) {
   }
 
   if (rowIndex !== -1) {
-    sheet.getRange(rowIndex + 1, NAME_COLUMN).setValue(itemData.name);
-    sheet.getRange(rowIndex + 1, DESCRIPTION_COLUMN).setValue(itemData.description);
+    sheet.getRange(rowIndex + 1, TITLE_COLUMN).setValue(itemData.title); // Changed to TITLE_COLUMN
+    sheet.getRange(rowIndex + 1, AUTHOR_COLUMN).setValue(itemData.author); // Changed to AUTHOR_COLUMN
     return itemData; // Return the updated data
   }
   return null;
@@ -112,12 +112,111 @@ function deleteItem(itemId) {
   return false;
 }
 
+// --- API ENDPOINTS FOR POSTMAN ---
+
 /**
- * Serves the HTML file for the web app.
- * This function needs to be deployed as a web app to be accessible.
+ * Handles HTTP GET requests. Used for reading data.
+ * @param {GoogleAppsScript.Events.DoGet} e - The event object for the GET request.
+ * @return {GoogleAppsScript.Content.TextOutput} A JSON response.
  */
-function doGet() {
-  return HtmlService.createTemplateFromFile('Index').evaluate()
-      .setTitle('CRUD App')
-      .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+function doGet(e) {
+  try {
+    const params = e.parameter;
+    const itemId = params.id; // Get ID from query parameter if provided
+
+    let result;
+    if (itemId) {
+      result = readItems(itemId);
+    } else {
+      result = readItems(); // Read all items
+    }
+
+    if (result) {
+      return ContentService.createTextOutput(JSON.stringify({ status: "success", data: result }))
+        .setMimeType(ContentService.MimeType.JSON);
+    } else {
+      return ContentService.createTextOutput(JSON.stringify({ status: "error", message: "Item not found" }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({ status: "error", message: error.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+/**
+ * Handles HTTP POST requests. Used for creating, updating, and deleting data.
+ * @param {GoogleAppsScript.Events.DoPost} e - The event object for the POST request.
+ * @return {GoogleAppsScript.Content.TextOutput} A JSON response.
+ */
+function doPost(e) {
+  let result;
+  let success = false;
+  let message = '';
+
+  try {
+    const postData = JSON.parse(e.postData.contents);
+    const action = postData.action; // e.g., 'create', 'update', 'delete', 'read'
+    const data = postData.data; // The actual item data
+
+    switch (action) {
+      case 'create':
+        result = createItem(data);
+        success = true;
+        message = 'Item created successfully';
+        break;
+      case 'update':
+        result = updateItem(data);
+        if (result) {
+          success = true;
+          message = 'Item updated successfully';
+        } else {
+          message = 'Item not found for update';
+        }
+        break;
+      case 'delete':
+        if (data && data.id) {
+          success = deleteItem(data.id);
+          if (success) {
+            message = 'Item deleted successfully';
+          } else {
+            message = 'Item not found for deletion';
+          }
+        } else {
+          message = 'ID is required for deletion';
+        }
+        break;
+      case 'read': // You can also handle 'read' via POST if preferred
+        if (data && data.id) {
+          result = readItems(data.id);
+          if (result) {
+            success = true;
+            message = 'Item found';
+          } else {
+            message = 'Item not found';
+          }
+        } else {
+          result = readItems();
+          success = true;
+          message = 'All items retrieved';
+        }
+        break;
+      default:
+        message = 'Invalid action specified';
+        break;
+    }
+
+    if (success) {
+      return ContentService.createTextOutput(JSON.stringify({ status: "success", message: message, data: result }))
+        .setMimeType(ContentService.MimeType.JSON);
+    } else {
+      return ContentService.createTextOutput(JSON.stringify({ status: "error", message: message }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({ status: "error", message: error.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
 }
