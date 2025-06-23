@@ -1,39 +1,123 @@
-const SHEET_NAME = 'Data';
-const FOLDER_ID = 'YOUR_GOOGLE_DRIVE_FOLDER_ID'; // เปลี่ยนตรงนี้
+// --- SERVER-SIDE FUNCTIONS (Code.gs) ---
 
+const SHEET_NAME = "Data";
+const ID_COLUMN = 1; // Column A
+const NAME_COLUMN = 2; // Column B
+const DESCRIPTION_COLUMN = 3; // Column C
+
+/**
+ * Returns the active sheet.
+ * @return {GoogleAppsScript.Spreadsheet.Sheet} The active sheet.
+ */
+function getSheet() {
+  return SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+}
+
+/**
+ * Generates a unique ID (simple example, improve for production).
+ * @return {string} A unique ID.
+ */
+function generateId() {
+  return "ITEM_" + new Date().getTime();
+}
+
+/**
+ * CREATE: Adds a new item to the sheet.
+ * @param {Object} itemData - An object containing name and description.
+ * @return {Object} The created item with its ID.
+ */
+function createItem(itemData) {
+  const sheet = getSheet();
+  const newId = generateId();
+  const row = [newId, itemData.name, itemData.description];
+  sheet.appendRow(row);
+  return { id: newId, name: itemData.name, description: itemData.description };
+}
+
+/**
+ * READ: Retrieves all items or a specific item by ID.
+ * @param {string} [itemId] - Optional ID of the item to retrieve. If not provided, all items are returned.
+ * @return {Array<Object>|Object|null} An array of items, a single item object, or null if not found.
+ */
+function readItems(itemId) {
+  const sheet = getSheet();
+  const range = sheet.getDataRange();
+  const values = range.getValues();
+
+  // Skip header row
+  const dataRows = values.slice(1);
+
+  const items = dataRows.map(row => ({
+    id: row[ID_COLUMN - 1],
+    name: row[NAME_COLUMN - 1],
+    description: row[DESCRIPTION_COLUMN - 1]
+  }));
+
+  if (itemId) {
+    return items.find(item => item.id === itemId) || null;
+  }
+  return items;
+}
+
+/**
+ * UPDATE: Updates an existing item by ID.
+ * @param {Object} itemData - An object containing id, name, and description.
+ * @return {Object|null} The updated item object, or null if not found.
+ */
+function updateItem(itemData) {
+  const sheet = getSheet();
+  const range = sheet.getDataRange();
+  const values = range.getValues();
+
+  // Find the row index of the item
+  let rowIndex = -1;
+  for (let i = 1; i < values.length; i++) { // Start from 1 to skip header
+    if (values[i][ID_COLUMN - 1] === itemData.id) {
+      rowIndex = i;
+      break;
+    }
+  }
+
+  if (rowIndex !== -1) {
+    sheet.getRange(rowIndex + 1, NAME_COLUMN).setValue(itemData.name);
+    sheet.getRange(rowIndex + 1, DESCRIPTION_COLUMN).setValue(itemData.description);
+    return itemData; // Return the updated data
+  }
+  return null;
+}
+
+/**
+ * DELETE: Deletes an item by ID.
+ * @param {string} itemId - The ID of the item to delete.
+ * @return {boolean} True if deleted, false otherwise.
+ */
+function deleteItem(itemId) {
+  const sheet = getSheet();
+  const range = sheet.getDataRange();
+  const values = range.getValues();
+
+  // Find the row index of the item
+  let rowIndex = -1;
+  for (let i = 1; i < values.length; i++) { // Start from 1 to skip header
+    if (values[i][ID_COLUMN - 1] === itemId) {
+      rowIndex = i;
+      break;
+    }
+  }
+
+  if (rowIndex !== -1) {
+    sheet.deleteRow(rowIndex + 1); // +1 because sheet rows are 1-indexed
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Serves the HTML file for the web app.
+ * This function needs to be deployed as a web app to be accessible.
+ */
 function doGet() {
-  return HtmlService.createHtmlOutput("GET Not Supported");
-}
-
-function doPost(e) {
-  return handleRequest(JSON.parse(e.postData.contents));
-}
-
-function handleRequest(data) {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
-
-  if (data.action === 'list') {
-    const values = sheet.getDataRange().getValues().slice(1);
-    return ContentService.createTextOutput(JSON.stringify(values)).setMimeType(ContentService.MimeType.JSON);
-  }
-
-  if (data.action === 'add') {
-    const fileBlob = Utilities.base64Decode(data.fileBase64);
-    const contentType = data.fileType;
-    const blob = Utilities.newBlob(fileBlob, contentType, data.fileName);
-
-    const file = DriveApp.getFolderById(FOLDER_ID).createFile(blob);
-    const fileURL = file.getUrl();
-
-    sheet.appendRow([data.title, data.used_date, data.amount, fileURL]);
-    return ContentService.createTextOutput("success");
-  }
-
-  if (data.action === 'delete') {
-    const row = data.rowIndex + 2;
-    sheet.deleteRow(row);
-    return ContentService.createTextOutput("deleted");
-  }
-
-  return ContentService.createTextOutput("unknown action");
+  return HtmlService.createTemplateFromFile('Index').evaluate()
+      .setTitle('CRUD App')
+      .setSandboxMode(HtmlService.SandboxMode.IFRAME);
 }
