@@ -1,0 +1,39 @@
+const SHEET_NAME = 'Data';
+const FOLDER_ID = 'YOUR_GOOGLE_DRIVE_FOLDER_ID'; // เปลี่ยนตรงนี้
+
+function doGet() {
+  return HtmlService.createHtmlOutput("GET Not Supported");
+}
+
+function doPost(e) {
+  return handleRequest(JSON.parse(e.postData.contents));
+}
+
+function handleRequest(data) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+
+  if (data.action === 'list') {
+    const values = sheet.getDataRange().getValues().slice(1);
+    return ContentService.createTextOutput(JSON.stringify(values)).setMimeType(ContentService.MimeType.JSON);
+  }
+
+  if (data.action === 'add') {
+    const fileBlob = Utilities.base64Decode(data.fileBase64);
+    const contentType = data.fileType;
+    const blob = Utilities.newBlob(fileBlob, contentType, data.fileName);
+
+    const file = DriveApp.getFolderById(FOLDER_ID).createFile(blob);
+    const fileURL = file.getUrl();
+
+    sheet.appendRow([data.title, data.used_date, data.amount, fileURL]);
+    return ContentService.createTextOutput("success");
+  }
+
+  if (data.action === 'delete') {
+    const row = data.rowIndex + 2;
+    sheet.deleteRow(row);
+    return ContentService.createTextOutput("deleted");
+  }
+
+  return ContentService.createTextOutput("unknown action");
+}
