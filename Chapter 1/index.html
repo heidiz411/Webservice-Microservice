@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <base target="_top">
+    <title>Simple CRUD App</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: auto; }
+        form { margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        input[type="text"], textarea { width: calc(100% - 22px); padding: 10px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; }
+        button { padding: 10px 15px; background-color: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background-color: #45a049; }
+        #itemsTable { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        #itemsTable th, #itemsTable td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        #itemsTable th { background-color: #f2f2f2; }
+        .edit-btn, .delete-btn { background-color: #008CBA; margin-right: 5px; }
+        .delete-btn { background-color: #f44336; }
+        .edit-btn:hover { background-color: #007bb5; }
+        .delete-btn:hover { background-color: #da190b; }
+        #message { margin-top: 10px; padding: 10px; border-radius: 4px; }
+        .success { background-color: #d4edda; color: #155724; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border-color: #f5c6cb; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Item Management</h1>
+
+        <div id="message"></div>
+
+        <form id="itemForm">
+            <input type="hidden" id="itemId">
+            <label for="itemTitle">Title:</label>
+            <input type="text" id="itemTitle" placeholder="Item Title" required><br>
+            <label for="itemAuthor">Author:</label>
+            <input type="text" id="itemAuthor" placeholder="Item Author" required><br>
+            <button type="submit" id="submitBtn">Add Item</button>
+            <button type="button" id="cancelBtn" style="display:none;">Cancel Edit</button>
+        </form>
+
+        <h2>Current Items</h2>
+        <table id="itemsTable">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Title</th>
+                    <th>Author</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="itemsList">
+                </tbody>
+        </table>
+    </div>
+
+    <script>
+        // --- CLIENT-SIDE JAVASCRIPT (Index.html) ---
+
+        const itemForm = document.getElementById('itemForm');
+        const itemIdInput = document.getElementById('itemId');
+        const itemTitleInput = document.getElementById('itemTitle'); // Changed ID
+        const itemAuthorInput = document.getElementById('itemAuthor'); // Changed ID
+        const submitBtn = document.getElementById('submitBtn');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const itemsList = document.getElementById('itemsList');
+        const messageDiv = document.getElementById('message');
+
+        /**
+         * Displays a message to the user.
+         * @param {string} msg - The message to display.
+         * @param {string} type - 'success' or 'error'.
+         */
+        function showMessage(msg, type) {
+            messageDiv.textContent = msg;
+            messageDiv.className = 'message ' + type;
+            messageDiv.style.display = 'block';
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+            }, 3000);
+        }
+
+        /**
+         * Loads all items from the Google Sheet and populates the table.
+         */
+        function loadItems() {
+            google.script.run
+                .withSuccessHandler(items => {
+                    itemsList.innerHTML = ''; // Clear existing items
+                    items.forEach(item => {
+                        const row = itemsList.insertRow();
+                        row.insertCell(0).textContent = item.id;
+                        row.insertCell(1).textContent = item.title; // Changed to item.title
+                        row.insertCell(2).textContent = item.author; // Changed to item.author
+
+                        const actionsCell = row.insertCell(3);
+                        const editButton = document.createElement('button');
+                        editButton.textContent = 'Edit';
+                        editButton.className = 'edit-btn';
+                        editButton.onclick = () => editItem(item);
+                        actionsCell.appendChild(editButton);
+
+                        const deleteButton = document.createElement('button');
+                        deleteButton.textContent = 'Delete';
+                        deleteButton.className = 'delete-btn';
+                        deleteButton.onclick = () => deleteItem(item.id);
+                        actionsCell.appendChild(deleteButton);
+                    });
+                })
+                .withFailureHandler(error => {
+                    showMessage('Error loading items: ' + error.message, 'error');
+                })
+                .readItems();
+        }
+
+        /**
+         * Handles form submission for creating or updating items.
+         */
+        itemForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const id = itemIdInput.value;
+            const title = itemTitleInput.value; // Changed to itemTitleInput
+            const author = itemAuthorInput.value; // Changed to itemAuthorInput
+            const itemData = { id, title, author }; // Changed to title, author
+
+            if (id) {
+                // Update existing item
+                google.script.run
+                    .withSuccessHandler(updatedItem => {
+                        if (updatedItem) {
+                            showMessage('Item updated successfully!', 'success');
+                            resetForm();
+                            loadItems();
+                        } else {
+                            showMessage('Item not found for update.', 'error');
+                        }
+                    })
+                    .withFailureHandler(error => {
+                        showMessage('Error updating item: ' + error.message, 'error');
+                    })
+                    .updateItem(itemData);
+            } else {
+                // Create new item
+                google.script.run
+                    .withSuccessHandler(newItem => {
+                        showMessage('Item created successfully!', 'success');
+                        resetForm();
+                        loadItems();
+                    })
+                    .withFailureHandler(error => {
+                        showMessage('Error creating item: ' + error.message, 'error');
+                    })
+                    .createItem(itemData);
+            }
+        });
+
+        /**
+         * Populates the form with item data for editing.
+         * @param {Object} item - The item object to edit.
+         */
+        function editItem(item) {
+            itemIdInput.value = item.id;
+            itemTitleInput.value = item.title; // Changed to item.title
+            itemAuthorInput.value = item.author; // Changed to item.author
+            submitBtn.textContent = 'Update Item';
+            cancelBtn.style.display = 'inline-block';
+        }
+
+        /**
+         * Deletes an item from the sheet.
+         * @param {string} id - The ID of the item to delete.
+         */
+        function deleteItem(id) {
+            if (confirm('Are you sure you want to delete this item?')) {
+                google.script.run
+                    .withSuccessHandler(deleted => {
+                        if (deleted) {
+                            showMessage('Item deleted successfully!', 'success');
+                            loadItems();
+                        } else {
+                            showMessage('Item not found for deletion.', 'error');
+                        }
+                    })
+                    .withFailureHandler(error => {
+                        showMessage('Error deleting item: ' + error.message, 'error');
+                    })
+                    .deleteItem(id);
+            }
+        }
+
+        /**
+         * Resets the form to its initial state.
+         */
+        function resetForm() {
+            itemForm.reset();
+            itemIdInput.value = '';
+            submitBtn.textContent = 'Add Item';
+            cancelBtn.style.display = 'none';
+        }
+
+        cancelBtn.addEventListener('click', resetForm);
+
+        // Load items when the page loads
+        document.addEventListener('DOMContentLoaded', loadItems);
+    </script>
+</body>
+</html>
