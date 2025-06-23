@@ -32,7 +32,7 @@ JSON
 }
 (แทนที่ YOUR_ITEM_ID ด้วย ID ที่คุณต้องการอัปเดต)
 3. ทดสอบ DELETE Item (DELETE Request)
-Method: DELETE
+Method: POST
 URL: Web app URL ของคุณ
 Headers: Content-Type: application/json
 Body: (raw, JSON)
