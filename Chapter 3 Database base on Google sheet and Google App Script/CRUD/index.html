@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบจัดการข้อมูลนักเรียน</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- jQuery CDN -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8; /* Light blue-gray background */
+        }
+        .container {
+            max-width: 1200px;
+        }
+        .form-input {
+            @apply mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-sm shadow-sm placeholder-gray-400
+                   focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500;
+        }
+        .btn {
+            @apply px-4 py-2 rounded-md font-semibold text-white shadow-md transition duration-300 ease-in-out transform hover:scale-105;
+        }
+        .btn-primary {
+            @apply bg-blue-600 hover:bg-blue-700;
+        }
+        .btn-success {
+            @apply bg-green-600 hover:bg-green-700;
+        }
+        .btn-danger {
+            @apply bg-red-600 hover:bg-red-700;
+        }
+        .btn-info {
+            @apply bg-purple-600 hover:bg-purple-700;
+        }
+        .card {
+            @apply bg-white p-6 rounded-lg shadow-lg;
+        }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            display: none; /* Hidden by default */
+        }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #09f;
+            animation: spin 1s ease infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="p-4">
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+    </div>
+
+    <div class="container mx-auto p-6 bg-white rounded-lg shadow-xl">
+        <h1 class="text-4xl font-bold text-center text-blue-800 mb-8">ระบบจัดการข้อมูลนักเรียน</h1>
+
+        <!-- Message Area -->
+        <div id="messageArea" class="mb-6 p-4 rounded-md text-center text-lg font-medium hidden"></div>
+
+        <!-- CRUD Form -->
+        <div class="card mb-8">
+            <h2 class="text-2xl font-semibold text-blue-700 mb-4">เพิ่ม / แก้ไขข้อมูลนักเรียน</h2>
+            <form id="studentForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input type="hidden" id="studentId">
+
+                <div>
+                    <label for="prefix" class="block text-gray-700 text-sm font-bold mb-1">คำนำหน้า:</label>
+                    <input type="text" id="prefix" name="prefix" class="form-input" placeholder="นาย/นางสาว">
+                </div>
+                <div>
+                    <label for="name" class="block text-gray-700 text-sm font-bold mb-1">ชื่อ-นามสกุล:</label>
+                    <input type="text" id="name" name="name" class="form-input" placeholder="ชื่อ นามสกุล" required>
+                </div>
+                <div>
+                    <label for="school" class="block text-gray-700 text-sm font-bold mb-1">โรงเรียน:</label>
+                    <input type="text" id="school" name="school" class="form-input" placeholder="ชื่อโรงเรียน">
+                </div>
+                <div>
+                    <label for="major" class="block text-gray-700 text-sm font-bold mb-1">สาขา/วิชาเอก:</label>
+                    <input type="text" id="major" name="major" class="form-input" placeholder="สาขาที่เรียน">
+                </div>
+                <div>
+                    <label for="phone" class="block text-gray-700 text-sm font-bold mb-1">เบอร์โทรศัพท์:</label>
+                    <input type="tel" id="phone" name="phone" class="form-input" placeholder="08XXXXXXXX">
+                </div>
+                <div>
+                    <label for="address" class="block text-gray-700 text-sm font-bold mb-1">ที่อยู่:</label>
+                    <input type="text" id="address" name="address" class="form-input" placeholder="บ้านเลขที่ ถนน ตำบล อำเภอ จังหวัด รหัสไปรษณีย์">
+                </div>
+                <div>
+                    <label for="email" class="block text-gray-700 text-sm font-bold mb-1">อีเมล:</label>
+                    <input type="email" id="email" name="email" class="form-input" placeholder="email@example.com">
+                </div>
+                <div>
+                    <label for="avatar" class="block text-gray-700 text-sm font-bold mb-1">ลิงก์รูปโปรไฟล์ (URL):</label>
+                    <input type="url" id="avatar" name="avatar" class="form-input" placeholder="https://example.com/avatar.jpg">
+                </div>
+                <div>
+                    <label for="idCardPic" class="block text-gray-700 text-sm font-bold mb-1">ลิงก์รูปบัตรประชาชน (URL):</label>
+                    <input type="url" id="id_card_pic" name="id_card_pic" class="form-input" placeholder="https://example.com/idcard.jpg">
+                </div>
+                <div>
+                    <label for="houseParticipantPic" class="block text-gray-700 text-sm font-bold mb-1">ลิงก์รูปทะเบียนบ้าน (URL):</label>
+                    <input type="url" id="house_participant_pic" name="house_participant_pic" class="form-input" placeholder="https://example.com/house.jpg">
+                </div>
+
+                <div class="md:col-span-2 flex justify-end space-x-4 mt-4">
+                    <button type="submit" id="createBtn" class="btn btn-primary">เพิ่มข้อมูล</button>
+                    <button type="button" id="updateBtn" class="btn btn-success hidden">บันทึกการแก้ไข</button>
+                    <button type="button" id="clearFormBtn" class="btn bg-gray-500 hover:bg-gray-600">ล้างฟอร์ม</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Read & Search Section -->
+        <div class="card mb-8">
+            <h2 class="text-2xl font-semibold text-blue-700 mb-4">ข้อมูลนักเรียน</h2>
+            <div class="flex flex-col md:flex-row gap-4 mb-4">
+                <input type="text" id="searchId" class="form-input flex-grow" placeholder="ค้นหาด้วย ID นักเรียน...">
+                <button id="searchBtn" class="btn btn-info md:w-auto">ค้นหา</button>
+                <button id="readAllBtn" class="btn btn-primary md:w-auto">แสดงข้อมูลทั้งหมด</button>
+            </div>
+
+            <!-- Student List/Table -->
+            <div id="studentList" class="overflow-x-auto">
+                <table class="min-w-full bg-white rounded-lg shadow-md">
+                    <thead class="bg-blue-100">
+                        <tr>
+                            <th class="py-3 px-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider rounded-tl-lg">ID</th>
+                            <th class="py-3 px-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">คำนำหน้า</th>
+                            <th class="py-3 px-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">ชื่อ-นามสกุล</th>
+                            <th class="py-3 px-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">โรงเรียน</th>
+                            <th class="py-3 px-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider">เบอร์โทร</th>
+                            <th class="py-3 px-4 text-left text-sm font-medium text-gray-700 uppercase tracking-wider rounded-tr-lg">การจัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentsTableBody" class="divide-y divide-gray-200">
+                        <!-- Data will be loaded here -->
+                        <tr>
+                            <td colspan="6" class="text-center py-4 text-gray-500">
+                                ไม่มีข้อมูล กรุณากด "แสดงข้อมูลทั้งหมด" หรือเพิ่มข้อมูลใหม่
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // *** แทนที่ URL นี้ด้วย Web App URL ที่คุณ Deploy จาก Google Apps Script ***
+        const GOOGLE_APP_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyMAG4TBwGlT-mHEPoQOr9VP3dBxqYy4Sb_O4OiK32n0-vtrZ0MD92-C2OtFWXPSN4n/exec';
+
+        // Function to show loading overlay
+        function showLoading() {
+            $('#loadingOverlay').show();
+        }
+
+        // Function to hide loading overlay
+        function hideLoading() {
+            $('#loadingOverlay').hide();
+        }
+
+        // Function to display messages (success/error)
+        function showMessage(message, type = 'success') {
+            const messageArea = $('#messageArea');
+            messageArea.removeClass().addClass('mb-6 p-4 rounded-md text-center text-lg font-medium');
+            if (type === 'success') {
+                messageArea.addClass('bg-green-100 text-green-800');
+            } else if (type === 'error') {
+                messageArea.addClass('bg-red-100 text-red-800');
+            }
+            messageArea.text(message).fadeIn();
+            setTimeout(() => messageArea.fadeOut(), 5000); // Hide after 5 seconds
+        }
+
+        // Function to clear the form
+        function clearForm() {
+            $('#studentForm')[0].reset(); // Reset all form fields
+            $('#studentId').val(''); // Clear hidden ID field
+            $('#createBtn').show(); // Show create button
+            $('#updateBtn').hide(); // Hide update button
+        }
+
+        // Function to render student data into the table
+        function renderStudents(students) {
+            const tableBody = $('#studentsTableBody');
+            tableBody.empty(); // Clear existing rows
+
+            if (!students || students.length === 0) {
+                tableBody.append('<tr><td colspan="6" class="text-center py-4 text-gray-500">ไม่มีข้อมูล</td></tr>');
+                return;
+            }
+
+            students.forEach(student => {
+                const row = `
+                    <tr class="hover:bg-gray-50">
+                        <td class="py-3 px-4 text-sm text-gray-800">${student.id}</td>
+                        <td class="py-3 px-4 text-sm text-gray-800">${student.prefix || ''}</td>
+                        <td class="py-3 px-4 text-sm text-gray-800">${student.name || ''}</td>
+                        <td class="py-3 px-4 text-sm text-gray-800">${student.school || ''}</td>
+                        <td class="py-3 px-4 text-sm text-gray-800">${student.phone || ''}</td>
+                        <td class="py-3 px-4 text-sm text-gray-800 flex flex-col sm:flex-row gap-2">
+                            <button class="btn btn-success text-xs py-1 px-2 edit-btn" data-id="${student.id}">แก้ไข</button>
+                            <button class="btn btn-danger text-xs py-1 px-2 delete-btn" data-id="${student.id}">ลบ</button>
+                        </td>
+                    </tr>
+                `;
+                tableBody.append(row);
+            });
+        }
+
+        // --- CRUD Operations ---
+
+        // Create/Update Item
+        $('#studentForm').on('submit', function(e) {
+            e.preventDefault(); // Prevent default form submission
+            showLoading();
+
+            const studentId = $('#studentId').val();
+            const action = studentId ? 'update' : 'create'; // Determine action based on hidden ID field
+
+            const itemData = {
+                prefix: $('#prefix').val(),
+                name: $('#name').val(),
+                school: $('#school').val(),
+                major: $('#major').val(),
+                phone: $('#phone').val(),
+                address: $('#address').val(),
+                email: $('#email').val(),
+                avatar: $('#avatar').val(),
+                idCardPic: $('#idCardPic').val(),
+                houseParticipantPic: $('#houseParticipantPic').val()
+            };
+
+            if (studentId) {
+                itemData.id = studentId; // Add ID for update operation
+            }
+
+            $.ajax({
+                url: GOOGLE_APP_SCRIPT_URL,
+                type: 'POST',
+                data: JSON.stringify({ action: action, data: itemData }),
+                contentType: 'application/json',
+                dataType: 'json',
+                success: function(response) {
+                    hideLoading();
+                    if (response.status === 'success') {
+                        showMessage(response.message, 'success');
+                        clearForm(); // Clear form after successful operation
+                        readAllItems(); // Refresh the list
+                    } else {
+                        showMessage('ข้อผิดพลาด: ' + response.message, 'error');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    hideLoading();
+                    showMessage('เกิดข้อผิดพลาดในการเชื่อมต่อ: ' + error, 'error');
+                    console.error('AJAX Error:', status, error, xhr.responseText);
+                }
+            });
+        });
+
+        // Read All Items
+        function readAllItems() {
+            showLoading();
+            $.ajax({
+                url: GOOGLE_APP_SCRIPT_URL,
+                type: 'GET',
+                dataType: 'json',
+                success: function(response) {
+                    hideLoading();
+                    if (response.status === 'success') {
+                        renderStudents(response.data);
+                        showMessage('ดึงข้อมูลทั้งหมดสำเร็จ', 'success');
+                    } else {
+                        showMessage('ข้อผิดพลาดในการดึงข้อมูล: ' + response.message, 'error');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    hideLoading();
+                    showMessage('เกิดข้อผิดพลาดในการเชื่อมต่อ: ' + error, 'error');
+                    console.error('AJAX Error:', status, error, xhr.responseText);
+                }
+            });
+        }
+
+        // Read Single Item (for editing)
+        function readSingleItem(id) {
+            showLoading();
+            $.ajax({
+                url: GOOGLE_APP_SCRIPT_URL + '?id=' + id, // Use GET for reading single item
+                type: 'GET',
+                dataType: 'json',
+                success: function(response) {
+                    hideLoading();
+                    if (response.status === 'success' && response.data) {
+                        const student = response.data;
+                        // Populate the form fields
+                        $('#studentId').val(student.id);
+                        $('#prefix').val(student.prefix);
+                        $('#name').val(student.name);
+                        $('#school').val(student.school);
+                        $('#major').val(student.major);
+                        $('#phone').val(student.phone);
+                        $('#address').val(student.address);
+                        $('#email').val(student.email);
+                        $('#avatar').val(student.avatar);
+                        $('#idCardPic').val(student.idCardPic);
+                        $('#houseParticipantPic').val(student.houseParticipantPic);
+
+                        // Adjust buttons for update mode
+                        $('#createBtn').hide();
+                        $('#updateBtn').show();
+                        showMessage('โหลดข้อมูลเพื่อแก้ไขสำเร็จ', 'success');
+                    } else {
+                        showMessage('ไม่พบข้อมูลนักเรียน: ' + response.message, 'error');
+                        clearForm();
+                    }
+                },
+                error: function(xhr, status, error) {
+                    hideLoading();
+                    showMessage('เกิดข้อผิดพลาดในการเชื่อมต่อ: ' + error, 'error');
+                    console.error('AJAX Error:', status, error, xhr.responseText);
+                }
+            });
+        }
+
+        // Delete Item
+        $(document).on('click', '.delete-btn', function() {
+            const studentId = $(this).data('id');
+            if (confirm('คุณแน่ใจหรือไม่ว่าต้องการลบข้อมูลนักเรียน ID: ' + studentId + ' นี้?')) {
+                showLoading();
+                $.ajax({
+                    url: GOOGLE_APP_SCRIPT_URL,
+                    type: 'POST',
+                    data: JSON.stringify({ action: 'delete', data: { id: studentId } }),
+                    contentType: 'application/json',
+                    dataType: 'json',
+                    success: function(response) {
+                        hideLoading();
+                        if (response.status === 'success') {
+                            showMessage(response.message, 'success');
+                            readAllItems(); // Refresh the list
+                        } else {
+                            showMessage('ข้อผิดพลาดในการลบ: ' + response.message, 'error');
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        hideLoading();
+                        showMessage('เกิดข้อผิดพลาดในการเชื่อมต่อ: ' + error, 'error');
+                        console.error('AJAX Error:', status, error, xhr.responseText);
+                    }
+                });
+            }
+        });
+
+        // Event listener for Edit button
+        $(document).on('click', '.edit-btn', function() {
+            const studentId = $(this).data('id');
+            readSingleItem(studentId);
+        });
+
+        // Event listener for Read All button
+        $('#readAllBtn').on('click', readAllItems);
+
+        // Event listener for Search button
+        $('#searchBtn').on('click', function() {
+            const searchId = $('#searchId').val().trim();
+            if (searchId) {
+                readSingleItem(searchId); // Use readSingleItem to populate form for search
+            } else {
+                showMessage('กรุณาป้อน ID ที่ต้องการค้นหา', 'error');
+            }
+        });
+
+        // Event listener for Clear Form button
+        $('#clearFormBtn').on('click', clearForm);
+
+        // Initial load: Read all items when the page loads
+        $(document).ready(function() {
+            readAllItems();
+        });
+    </script>
+</body>
+</html>
