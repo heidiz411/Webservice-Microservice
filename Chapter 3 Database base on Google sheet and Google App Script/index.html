@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ดาวน์โหลดเกียรติบัตร</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f0f2f5;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    .container {
+      background-color: #ffffff;
+      padding: 32px;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+      text-align: center;
+      max-width: 500px;
+      width: 100%;
+    }
+    h1 {
+      color: #1a202c;
+      font-size: 1.875rem; /* 30px */
+      font-weight: 700;
+      margin-bottom: 24px;
+    }
+    label {
+      display: block;
+      margin-bottom: 8px;
+      color: #4a5568;
+      font-weight: 500;
+      text-align: left;
+    }
+    select, button {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 16px;
+      border-radius: 8px;
+      border: 1px solid #cbd5e0;
+      font-size: 1rem;
+      box-sizing: border-box;
+    }
+    select {
+      background-color: #edf2f7;
+      appearance: none; /* Remove default dropdown arrow */
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='currentColor'%3E%3Cpath fill-rule='evenodd' d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z' clip-rule='evenodd'%3E%3C/path%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.75rem center;
+      background-size: 1.5em 1.5em;
+      padding-right: 2.5rem; /* Make space for the custom arrow */
+      cursor: pointer;
+    }
+    button {
+      background-color: #4299e1;
+      color: white;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background-color 0.3s ease, transform 0.2s ease;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    button:hover {
+      background-color: #3182ce;
+      transform: translateY(-2px);
+    }
+    button:active {
+      background-color: #2b6cb0;
+      transform: translateY(0);
+    }
+    .message-box {
+      background-color: #fff3cd;
+      border: 1px solid #ffeeba;
+      color: #856404;
+      padding: 12px;
+      border-radius: 8px;
+      margin-top: 20px;
+      display: none; /* Hidden by default */
+    }
+    .message-box.show {
+      display: block;
+    }
+    .loading-spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #4299e1;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 10px auto;
+      display: none; /* Hidden by default */
+    }
+    .loading-spinner.show {
+      display: block;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>ดาวน์โหลดเกียรติบัตรออนไลน์</h1>
+
+    <div class="loading-spinner" id="loadingSpinner"></div>
+    <div class="message-box" id="messageBox"></div>
+
+    <label for="nameDropdown">เลือกชื่อของคุณ:</label>
+    <select id="nameDropdown" class="mb-4 rounded-lg p-3 border border-gray-300 focus:ring-blue-500 focus:border-blue-500">
+      <option value="">-- โปรดเลือกชื่อ --</option>
+      <!-- Options will be populated by JavaScript -->
+    </select>
+
+    <button id="downloadButton" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out">
+      ดาวน์โหลดเกียรติบัตร
+    </button>
+  </div>
+
+  <script>
+    // Function to display messages to the user
+    function showMessage(message, type = 'info') {
+      const messageBox = document.getElementById('messageBox');
+      messageBox.textContent = message;
+      messageBox.className = `message-box show ${type === 'error' ? 'bg-red-100 border-red-400 text-red-700' : 'bg-yellow-100 border-yellow-400 text-yellow-700'}`;
+    }
+
+    // Function to hide messages
+    function hideMessage() {
+      const messageBox = document.getElementById('messageBox');
+      messageBox.className = 'message-box';
+      messageBox.textContent = '';
+    }
+
+    // Function to show/hide loading spinner
+    function showLoading(show) {
+      const spinner = document.getElementById('loadingSpinner');
+      if (show) {
+        spinner.classList.add('show');
+        hideMessage(); // Hide any previous messages when loading starts
+      } else {
+        spinner.classList.remove('show');
+      }
+    }
+
+    /**
+     * Fetches certificate data (names and download links) from the Google Apps Script.
+     * Populates the dropdown with names.
+     */
+    function loadNames() {
+      showLoading(true);
+      google.script.run
+        .withSuccessHandler(function(data) {
+          const dropdown = document.getElementById('nameDropdown');
+          dropdown.innerHTML = '<option value="">-- โปรดเลือกชื่อ --</option>'; // Clear existing options
+          if (data && data.length > 0) {
+            data.forEach(item => {
+              const option = document.createElement('option');
+              option.value = item.downloadLink; // Use download link as value
+              option.textContent = item.name;
+              dropdown.appendChild(option);
+            });
+            hideMessage();
+          } else {
+            showMessage('ไม่พบข้อมูลเกียรติบัตรที่สร้างแล้ว.', 'info');
+          }
+          showLoading(false);
+        })
+        .withFailureHandler(function(error) {
+          showMessage('เกิดข้อผิดพลาดในการโหลดรายชื่อ: ' + error.message, 'error');
+          showLoading(false);
+        })
+        .getCertificateData(); // Call the Apps Script function
+    }
+
+    /**
+     * Handles the download button click.
+     * Opens the selected certificate's download link in a new tab.
+     */
+    function downloadCertificate() {
+      const dropdown = document.getElementById('nameDropdown');
+      const selectedLink = dropdown.value;
+
+      if (selectedLink) {
+        window.open(selectedLink, '_blank');
+        hideMessage();
+      } else {
+        showMessage('โปรดเลือกชื่อจากรายการก่อนดาวน์โหลด.', 'info');
+      }
+    }
+
+    // Event listeners
+    document.addEventListener('DOMContentLoaded', loadNames); // Load names when page loads
+    document.getElementById('downloadButton').addEventListener('click', downloadCertificate);
+  </script>
+</body>
+</html>
