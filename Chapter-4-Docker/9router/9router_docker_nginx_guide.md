@@ -54,35 +54,29 @@ server {
 version: '3.8'
 
 services:
-  # 9Router Application Service
-  9router-app:
-    image: 9router/9router:latest # เปลี่ยนเป็น Image หรือ Build Path ของ 9Router
-    container_name: 9router-app
-    restart: always
-    environment:
-      - NODE_ENV=production
-      - PORT=3000
-    networks:
-      - 9router-net
-
-  # Nginx Reverse Proxy Service
-  nginx:
-    image: nginx:alpine
-    container_name: 9router-nginx
-    restart: always
+  9router:
+    image: decolua/9router:latest
+    container_name: 9router
+    restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
+      - "20128:20128"
     volumes:
-      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
-    depends_on:
-      - 9router-app
-    networks:
-      - 9router-net
+      - ./data:/app/data
+    environment:
+      - DATA_DIR=/app/data
+      - INITIAL_PASSWORD=123456
 
-networks:
-  9router-net:
-    driver: bridge
+  nginx-proxy-manager:
+    image: 'jc21/nginx-proxy-manager:latest'
+    container_name: nginx-proxy-manager
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '81:81'
+      - '443:443'
+    volumes:
+      - ./npm/data:/data
+      - ./npm/letsencrypt:/etc/letsencrypt
 ```
 
 ---
@@ -100,11 +94,13 @@ docker compose up -d
 ## 🔍 5. การตรวจสอบสถานะและการทำงาน (Verification)
 
 1. **ตรวจสอบสถานะของ Container:**
+
    ```bash
    docker compose ps
    ```
 
 2. **ดู Logs การทำงานของบริการ:**
+
    ```bash
    # ดู Logs ทั้งหมด
    docker compose logs -f
@@ -117,6 +113,19 @@ docker compose up -d
    เปิดเว็บเบราว์เซอร์แล้วระบุ `http://your-domain.com` หรือ IP Address ของ Server ที่ตั้งค่าไว้
 
 ---
+
+## 🔒 6. การตั้งค่า .claude/settings.json
+
+```json
+{
+  "hasCompletedOnboarding": true,
+  "env": {
+    "ANTHROPIC_BASE_URL": "http://localhost:20128/v1",
+    "ANTHROPIC_AUTH_TOKEN": "sk-9router-api-key",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "my-combo"
+  }
+}
+```
 
 ## 🔒 ข้อแนะนำเพิ่มเติม: การตั้งค่า SSL (HTTPS) ด้วย Let's Encrypt
 

@@ -1,0 +1,8 @@
+{
+  "hasCompletedOnboarding": true,
+  "env": {
+    "ANTHROPIC_BASE_URL": "http://localhost:20128/v1",
+    "ANTHROPIC_AUTH_TOKEN": "sk-09a1eb4772b22b3a-xxs9ot-17b89796",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "heidiz-combo"
+  }
+}
